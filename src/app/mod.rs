@@ -239,6 +239,8 @@ impl eframe::App for App {
                                     }
                                 });
 
+                                ui.add_space(10.0);
+
                                 if self.incorrect_password {
                                     ui.label(egui::RichText::new("Incorrect password.").monospace().color(palette::ERROR).size(20.0));
                                 }

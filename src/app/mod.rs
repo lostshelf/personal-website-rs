@@ -132,6 +132,7 @@ impl eframe::App for App {
                     let response = ui.add_sized(
                         ui.available_size(),
                         egui::TextEdit::singleline(&mut self.cli_input)
+                            .frame(egui::Frame::default().stroke(egui::Stroke { color: palette::ACCENT_DIM, ..Default::default()}))
                             .font(egui::FontId::monospace(20.0))
                             .vertical_align(egui::Align::Center)
                             .text_color(palette::TEXT_PRIMARY)

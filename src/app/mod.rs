@@ -2,7 +2,9 @@ mod palette;
 
 use eframe::egui;
 
-const PASSWORD: &str = "password{Y0U_AR3_W0RTHY}";
+// Make it more obvious what the password is but also allow the original password
+// This way the password also won't get thrown away by the compiler
+const PASSWORD: [&str; 2] = ["password{Y0U_AR3_W0RTHY}", "Y0U_AR3_W0RTHY"];
 
 #[derive(PartialEq, Clone, Copy)]
 enum Page {
@@ -14,10 +16,10 @@ enum Page {
     Help
 }
 
+// This struct holds all state
 pub struct App {
     cli_input: String,
     current_page: Page,
-    error_msg: Option<String>,
     unlocked: bool,
     password_input: String,
     incorrect_password: bool,
@@ -28,7 +30,6 @@ impl Default for App {
         Self {
             cli_input: String::new(),
             current_page: Page::Home,
-            error_msg: None,
             unlocked: false,
             password_input: String::new(),
             incorrect_password: false,
@@ -65,6 +66,7 @@ fn setup_visuals(ctx: &egui::Context) {
 fn setup_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
 
+    // Load Geo from disk
     fonts.font_data.insert(
         "geo".to_owned(),
         std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
@@ -72,6 +74,7 @@ fn setup_fonts(ctx: &egui::Context) {
         )))
     );
 
+    // Replace default monospaced font with Geo
     fonts
         .families
         .entry(egui::FontFamily::Monospace)
@@ -83,6 +86,8 @@ fn setup_fonts(ctx: &egui::Context) {
 
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        egui_extras::install_image_loaders(&cc.egui_ctx);
+
         setup_theme(&cc.egui_ctx);
         setup_fonts(&cc.egui_ctx);
 
@@ -111,11 +116,49 @@ impl App {
     }
 
     fn render_home(&self, ui: &mut egui::Ui) {
-        ui.label("home page");
+        text_default(ui, "Great job! Enjoy your stay...");
+    }
+
+    fn render_about_images(&self, ui: &mut egui::Ui) {
+        ui.add(
+            egui::Image::new(egui::include_image!("../../assets/mozgus.png"))
+                .fit_to_exact_size(egui::vec2(250.0, 250.0))
+        );
+    }
+
+    fn render_about_content(&self, ui: &mut egui::Ui) {
+        text_default(ui, "Hadi Faraz @ Calgary");
+        ui.separator();
+        inline_multicolor_text(ui, "whoami:", "Computer Science student at the University of Calgary\nVice President of Infrastructure at the UCalgary CyberSec Club", palette::ACCENT, palette::TEXT_PRIMARY);
+        inline_multicolor_text(ui, "interests:", "Rust ❤️, reverse engineering ❤️, formal logic ❤️, embedded systems, assembly, hardware design, binary exploitation, linux", palette::ACCENT, palette::TEXT_PRIMARY);
+        inline_multicolor_text(ui, "hobbies:", "Programming, video games, music, swimming, supernatural and fantasy books", palette::ACCENT, palette::TEXT_PRIMARY);
+        inline_multicolor_text(ui, "favourite book:", "House of Leaves", palette::ACCENT, palette::TEXT_PRIMARY);
+        inline_multicolor_text(ui, "favourite game:", "Factorio ❤️", palette::ACCENT, palette::TEXT_PRIMARY);
+        inline_multicolor_text(ui, "favourite linux distro:", "NixOS", palette::ACCENT, palette::TEXT_PRIMARY);
     }
 
     fn render_about(&self, ui: &mut egui::Ui) {
-        ui.label("about page");
+        if ui.available_width() < 600.0 {
+            ui.vertical(|ui| {
+                self.render_about_images(ui);
+
+                ui.add_space(15.0);
+
+                self.render_about_content(ui);
+            });
+        } else {
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    self.render_about_images(ui);
+                });
+
+                ui.add_space(60.0);
+
+                ui.vertical(|ui| {
+                    self.render_about_content(ui);
+                })
+            });
+        }
     }
 
     fn render_contact(&self, ui: &mut egui::Ui) {
@@ -127,17 +170,17 @@ impl App {
     }
 
     fn render_not_found(&self, ui: &mut egui::Ui) {
-        ui.label("not found page");
+        text_default(ui, "Sorry but that isn't a valid command.");
     }
 
     fn render_help(&self, ui: &mut egui::Ui) {
-        ui.label("help page");
+        text_default(ui, "Available commands are: 'home', 'about' and 'help'");
     }
 
     fn check_password(&mut self) {
         let input = self.password_input.trim();
 
-        if input.contains("Y0U_AR3_W0RTHY") {
+        if PASSWORD.contains(&input) {
             self.unlocked = true;
             self.incorrect_password = false;
         } else {
@@ -176,11 +219,13 @@ impl eframe::App for App {
                                 )
                         );
 
+                        // Handle input
                         if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                             self.run_command();
-                            response.request_focus();
                         }
 
+                        // egui by default will take away the focus from the text box after user has pressed enter
+                        // so we must get focus back or else user will have to manually click back into it
                         if ui.ctx().memory(|m| m.focused().is_none()) {
                             response.request_focus();
                         }
@@ -249,4 +294,29 @@ impl eframe::App for App {
             });
         }
     }
+}
+
+
+
+fn text(ui: &mut egui::Ui, t: &str, color: Option<egui::Color32>, size: Option<f32>) -> egui::Response {
+    ui.add(
+        egui::Label::new(
+            egui::RichText::new(t).monospace().size(size.unwrap_or(20.0)).color(color.unwrap_or(palette::TEXT_PRIMARY))
+        ).wrap_mode(egui::TextWrapMode::Wrap)
+    )
+}
+
+fn text_default(ui: &mut egui::Ui, t: &str) -> egui::Response {
+    text(ui, t, None, None)
+}
+
+fn text_color(ui: &mut egui::Ui, t: &str, color: egui::Color32) -> egui::Response {
+    text(ui, t, Some(color), None)
+}
+
+fn inline_multicolor_text(ui: &mut egui::Ui, left: &str, right: &str, left_color: egui::Color32, right_color: egui::Color32) {
+    ui.horizontal(|ui| {
+        text_color(ui, left, left_color);
+        text_color(ui, right, right_color);
+    });
 }

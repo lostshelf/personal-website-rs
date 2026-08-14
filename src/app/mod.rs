@@ -2,19 +2,24 @@ mod palette;
 
 use eframe::egui;
 
+const PASSWORD: &str = "password{Y0U_AR3_W0RTHY}";
+
 #[derive(PartialEq, Clone, Copy)]
 enum Page {
     Home,
     About,
     Projects,
     Contact,
-    NotFound
+    NotFound,
+    Help
 }
 
 pub struct App {
     cli_input: String,
     current_page: Page,
     error_msg: Option<String>,
+    unlocked: bool,
+    password_input: String,
 }
 
 impl Default for App {
@@ -23,6 +28,8 @@ impl Default for App {
             cli_input: String::new(),
             current_page: Page::Home,
             error_msg: None,
+            unlocked: false,
+            password_input: String::new(),
         }
     }
 }
@@ -81,6 +88,10 @@ impl App {
     }
 
     fn run_command(&mut self) {
+        if !self.unlocked {
+            return;
+        }
+
         let cmd = self.cli_input.trim().to_lowercase();
 
         self.current_page = match cmd.as_str() {
@@ -88,7 +99,7 @@ impl App {
             "about" => Page::About,
             "projects" => Page::Projects,
             "contact" => Page::Contact,
-            "help" => { self.error_msg = Some("Available commands are: about, projects, contact and clear".into()); self.current_page }
+            "help" => Page::Help,
             _ => Page::NotFound,
         };
 
@@ -116,56 +127,117 @@ impl App {
     fn render_not_found(&self, ui: &mut egui::Ui) {
         ui.label("not found page");
     }
+
+    fn render_help(&self, ui: &mut egui::Ui) {
+        ui.label("help page");
+    }
+
+    fn check_password(&mut self) {
+        let input = self.password_input.trim();
+
+        if input == PASSWORD {
+            self.unlocked = true;
+        } else {
+            
+        }
+
+        self.password_input.clear();
+    }
 }
 
 impl eframe::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        egui::Panel::top("input_bar")
-            .frame(egui::Frame::default()
-                .fill(palette::BG_BASE)
-                .inner_margin(egui::Margin::symmetric(12, 10)))
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new(">").color(palette::ACCENT).monospace().size(20.0));
+        if self.unlocked {
+            egui::Panel::top("input_bar")
+                .frame(egui::Frame::default()
+                    .fill(palette::BG_BASE)
+                    .inner_margin(egui::Margin::symmetric(12, 10)))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new(">").color(palette::ACCENT).monospace().size(20.0));
 
-                    let response = ui.add_sized(
-                        ui.available_size(),
-                        egui::TextEdit::singleline(&mut self.cli_input)
-                            .frame(egui::Frame::default().stroke(egui::Stroke { color: palette::ACCENT_DIM, ..Default::default()}))
-                            .font(egui::FontId::monospace(20.0))
-                            .vertical_align(egui::Align::Center)
-                            .text_color(palette::TEXT_PRIMARY)
-                            .desired_width(f32::INFINITY)
-                            .hint_text(
-                                egui::RichText::new("type 'help' to see all available commands")
-                                    .color(palette::TEXT_SECONDARY)
-                                    .size(20.0)
-                                    .monospace()
-                            )
-                    );
+                        let response = ui.add_sized(
+                            ui.available_size(),
+                            egui::TextEdit::singleline(&mut self.cli_input)
+                                .frame(egui::Frame::default().stroke(egui::Stroke { color: palette::ACCENT_DIM, ..Default::default()}))
+                                .font(egui::FontId::monospace(20.0))
+                                .vertical_align(egui::Align::Center)
+                                .text_color(palette::TEXT_PRIMARY)
+                                .desired_width(f32::INFINITY)
+                                .hint_text(
+                                    egui::RichText::new("type 'help' to see all available commands")
+                                        .color(palette::TEXT_SECONDARY)
+                                        .size(20.0)
+                                        .monospace()
+                                )
+                        );
 
-                    if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                        self.run_command();
-                        response.request_focus();
+                        if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                            self.run_command();
+                            response.request_focus();
+                        }
+
+                        if ui.ctx().memory(|m| m.focused().is_none()) {
+                            response.request_focus();
+                        }
+                    })
+                });
+
+            egui::CentralPanel::default()
+                .frame(egui::Frame::default().fill(palette::BG_BASE).inner_margin(20))
+                .show(ui, |ui| {
+                    match self.current_page {
+                        Page::Home => self.render_home(ui),
+                        Page::About => self.render_about(ui),
+                        Page::Projects => self.render_projects(ui),
+                        Page::Contact => self.render_contact(ui),
+                        Page::NotFound => self.render_not_found(ui),
+                        Page::Help => self.render_help(ui),
                     }
+                });
+        } else {
+            egui::CentralPanel::default()
+                .frame(egui::Frame::default().fill(palette::BG_BASE).inner_margin(20))
+                .show(ui, |ui| {
+                    egui::Window::new("login_screen")
+                        .title_bar(false)
+                        .resizable(false)
+                        .collapsible(false)
+                        .frame(egui::Frame::default().fill(palette::BG_BASE).inner_margin(24.0))
+                        .fixed_size(egui::vec2(800.0, 160.0))
+                        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                        .collapsible(false)
+                        .title_bar(false)
+                        .show(ui, |ui| {
+                            ui.vertical_centered(|ui| {
+                                ui.add_space(12.0);
+                                ui.label(egui::RichText::new("PROVE YOUR WORTH").monospace().color(palette::TEXT_SECONDARY).size(80.0));
+                                ui.add_space(16.0);
+                                ui.horizontal(|ui| {
+                                    let response = ui.add(
+                                        egui::TextEdit::singleline(&mut self.password_input)
+                                            .frame(egui::Frame::default().stroke(egui::Stroke { width: 1.0, color: palette::ACCENT_DIM, ..Default::default()}).inner_margin(10.0))
+                                            .font(egui::FontId::monospace(20.0))
+                                            .vertical_align(egui::Align::Center)
+                                            .text_color(palette::TEXT_PRIMARY)
+                                            .desired_width(f32::INFINITY)
+                                            .hint_text(
+                                                egui::RichText::new("Enter password here")
+                                                    .color(palette::TEXT_SECONDARY)
+                                                    .size(20.0)
+                                                    .monospace()
+                                            )
+                                    );
+                                    
 
-                    if ui.ctx().memory(|m| m.focused().is_none()) {
-                        response.request_focus();
-                    }
-                })
+                                    if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                                        self.check_password();
+                                    }
+                                });
+                            });
+                        });
             });
-
-        egui::CentralPanel::default()
-            .frame(egui::Frame::default().fill(palette::BG_BASE).inner_margin(20))
-            .show(ui, |ui| {
-                match self.current_page {
-                    Page::Home => self.render_home(ui),
-                    Page::About => self.render_about(ui),
-                    Page::Projects => self.render_projects(ui),
-                    Page::Contact => self.render_contact(ui),
-                    Page::NotFound => self.render_not_found(ui),
-                }
-            });
+        }
     }
 }

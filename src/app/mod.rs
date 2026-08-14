@@ -20,6 +20,7 @@ pub struct App {
     error_msg: Option<String>,
     unlocked: bool,
     password_input: String,
+    incorrect_password: bool,
 }
 
 impl Default for App {
@@ -30,6 +31,7 @@ impl Default for App {
             error_msg: None,
             unlocked: false,
             password_input: String::new(),
+            incorrect_password: false,
         }
     }
 }
@@ -137,8 +139,9 @@ impl App {
 
         if input == PASSWORD {
             self.unlocked = true;
+            self.incorrect_password = false;
         } else {
-            
+            self.incorrect_password = true;
         }
 
         self.password_input.clear();
@@ -235,6 +238,10 @@ impl eframe::App for App {
                                         self.check_password();
                                     }
                                 });
+
+                                if self.incorrect_password {
+                                    ui.label(egui::RichText::new("Incorrect password.").monospace().color(palette::ERROR).size(20.0));
+                                }
                             });
                         });
             });

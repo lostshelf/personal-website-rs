@@ -9,6 +9,7 @@
   packages = [
     pkgs.trunk
     pkgs.wasm-bindgen-cli
+    pkgs.wrangler
   ];
 
   # https://devenv.sh/languages/

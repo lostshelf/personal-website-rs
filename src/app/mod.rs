@@ -137,7 +137,7 @@ impl App {
     fn check_password(&mut self) {
         let input = self.password_input.trim();
 
-        if input == PASSWORD {
+        if input.contains("Y0U_AR3_W0RTHY") {
             self.unlocked = true;
             self.incorrect_password = false;
         } else {

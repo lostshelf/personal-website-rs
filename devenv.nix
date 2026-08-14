@@ -10,6 +10,7 @@
     pkgs.trunk
     pkgs.wasm-bindgen-cli
     pkgs.wrangler
+    pkgs.binaryen
   ];
 
   # https://devenv.sh/languages/
